@@ -1,7 +1,7 @@
 #ifndef _SOLISWETS_H
 #define _SOLISWETS_H
 
-#include "Helper.h"
+#include "helper.h"
 
 class SolisWets
 {
@@ -29,11 +29,13 @@ public:
    *    - unsigned int: n_success
    *    - unsigned int: n_fails
    *    - unsigned int: n_dim
+	 *    - unsigned int: n_threads to execute the kernels
+	 *    - unsigned int: n_blocks to execute the kernels
    *    - float: x_min (lower bound)
    *    - float: x_max (upper bound)
    *    - float: delta
    */
-	SolisWets(unsigned int, unsigned int, unsigned int, float, float, float);
+	SolisWets(unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, float, float, float);
 	~SolisWets();
 
   float optimize(const unsigned int, float *);

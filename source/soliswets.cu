@@ -1,4 +1,4 @@
-#include "SolisWets.h"
+#include "soliswets.h"
 #include <random>
 #include <cassert>
 
@@ -48,7 +48,7 @@ SolisWets::~SolisWets()
 float SolisWets::optimize(const unsigned int n_evals, float * d_sol){
   unsigned int _n_success = 0, _n_fails = 0;
 
-  float result = 0.0 current_fitness = 0.0;
+  float result = 0.0, current_fitness = 0.0;
 
   //eval solution
   //current_fitness =
@@ -69,7 +69,7 @@ float SolisWets::optimize(const unsigned int n_evals, float * d_sol){
 
       //increment bias and copy
       increment_bias<<<n_blocks, n_threads>>>(d_bias, d_diff, n_dim);
-      checkCudaErrors(cudaMemcpy(d_sol, d_new_solution, n_dim * sizeof(float)));
+      checkCudaErrors(cudaMemcpy(d_sol, d_new_solution, n_dim * sizeof(float), cudaMemcpyDeviceToDevice));
 
       _n_success++;
       _n_fails = 0;
@@ -91,7 +91,7 @@ float SolisWets::optimize(const unsigned int n_evals, float * d_sol){
 
         //decrement bias and copy
         decrement_bias<<<n_blocks, n_threads>>>(d_bias, d_diff, n_dim);
-        checkCudaErrors(cudaMemcpy(d_sol, d_new_solution, n_dim * sizeof(float)));
+        checkCudaErrors(cudaMemcpy(d_sol, d_new_solution, n_dim * sizeof(float), cudaMemcpyDeviceToDevice));
 
         _n_success++;
         _n_fails = 0;
