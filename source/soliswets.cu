@@ -1,4 +1,4 @@
-#include "soliswets.h"
+#include "soliswets.cuh"
 #include <random>
 #include <cassert>
 

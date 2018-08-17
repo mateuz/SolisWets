@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "soliswets.h"
+#include "soliswets.cuh"
 
 int main(int argc, char * argv[]){
 

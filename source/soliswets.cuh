@@ -1,7 +1,7 @@
 #ifndef _SOLISWETS_H
 #define _SOLISWETS_H
 
-#include "helper.h"
+#include "helper.cuh"
 
 class SolisWets
 {
