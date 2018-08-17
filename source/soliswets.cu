@@ -201,16 +201,16 @@ __global__ void decrement_bias(float * d_bias, float * d_diff, unsigned int ndim
 }
 
 __global__ void generate_new_solution(
-	float * d_sol,
-	float * d_new_solution,
-	float * d_bias,
-	float * d_diff,
-	float x_min,
-	float x_max,
-	float delta,
-	unsigned int n_dim,
-	unsigned short direction,
-	curandState * g_state
+  float * d_sol,
+  float * d_new_solution,
+  float * d_bias,
+  float * d_diff,
+  float x_min,
+  float x_max,
+  float delta,
+  unsigned int n_dim,
+  unsigned short direction,
+  curandState * g_state
 ){
   unsigned int index = threadIdx.x + (blockIdx.x * blockDim.x);
 
@@ -218,23 +218,20 @@ __global__ void generate_new_solution(
 
   if( index < n_dim )
   {
-		if( direction == 0 )
+    if( direction == 0 )
     {
-			curandState l_state;
-			l_state = g_state[index];
+      curandState l_state;
+      l_state = g_state[index];
       d_diff[index] = curand_normal(&l_state) * delta;
       solution = d_sol[index] + d_bias[index] + d_diff[index];
-			g_state[index] = l_state;
-		}
-    else
-    {
-			solution = d_sol[index] - d_bias[index] - d_diff[index];
-		}
+      g_state[index] = l_state;
+    } else {
+      solution = d_sol[index] - d_bias[index] - d_diff[index];
+    }
+
     // Check bounds of the new solution
-		solution = max(x_min, solution);
-		solution = min(x_max, solution);
-
-
+    solution = max(x_min, solution);
+    solution = min(x_max, solution);
     d_new_solution[index] = solution;
-	}
+  }
 }

@@ -10,9 +10,9 @@ public:
 	unsigned int n_fails;
 	unsigned int n_dim;
 
-  /* bounds */
+	/* bounds */
 	float x_min;
-  float x_max;
+	float x_max;
 	float delta;
 
 	/* device datas */
@@ -21,8 +21,8 @@ public:
 	float * d_diff;
 	curandState * d_states;
 
-  unsigned int n_blocks;
-  unsigned int n_threads;
+	unsigned int n_blocks;
+	unsigned int n_threads;
 
   /*
    * @params:
@@ -43,10 +43,10 @@ public:
 
 __global__ void setup_kernel
 (
-  curandState * state,
-  float * d_bias,
-  unsigned int seed,
-  unsigned int size
+	curandState * state,
+	float * d_bias,
+	unsigned int seed,
+	unsigned int size
 );
 
 __global__ void increment_bias(
