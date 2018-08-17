@@ -45,13 +45,62 @@ SolisWets::~SolisWets()
   checkCudaErrors(cudaFree(d_states));
 }
 
+__global__ void s_rosenbrock_kernel(
+  float * x,
+  float * fitness,
+  uint ndim
+){
+ uint id_p = threadIdx.x + (blockIdx.x * blockDim.x);
+ uint id_d = id_p * ndim;
+
+ float s1 = 0.0, s2 = 0.0, a, b;
+
+ uint i = 0;
+ for(; i < (ndim - 1); i++){
+   a = x[id_d + i] + 1.0f;
+   b = x[id_d + i + 1] + 1.0f;
+
+   s1  = ( a * a ) - b;
+   s2 += ( 100.0 * s1 * s1 );
+
+   s1  = (a - 1.0);
+   s2 += ( s1 * s1 );
+ }
+
+ *fitness = s2;
+}
+
+__global__ void s_sphera_kernel(
+  float * x,
+  float * fitness,
+  uint ndim
+){
+ uint id_p = threadIdx.x + (blockIdx.x * blockDim.x);
+ uint id_d = id_p * ndim;
+
+ float s = 0.0, a;
+
+ uint i = 0;
+ for(; i < (ndim - 1); i++){
+   a = x[id_d + i];
+   s += a * a;
+ }
+
+ *fitness = s;
+}
+
 float SolisWets::optimize(const unsigned int n_evals, float * d_sol){
   unsigned int _n_success = 0, _n_fails = 0;
+
+  float * d_fitness;
+  checkCudaErrors(cudaMalloc((void **)&d_fitness, sizeof(float)));
 
   float result = 0.0, current_fitness = 0.0;
 
   //eval solution
-  //current_fitness =
+  s_sphera_kernel<<<1, 1>>>(d_sol, d_fitness, n_dim);
+  checkCudaErrors(cudaMemcpy(&current_fitness, d_fitness, sizeof(float), cudaMemcpyDeviceToHost));
+  printf("%.2lf\n", current_fitness);
 
   for( unsigned int it = 1; it <= n_evals; ){
     generate_new_solution<<<n_blocks, n_threads>>>(
@@ -59,12 +108,13 @@ float SolisWets::optimize(const unsigned int n_evals, float * d_sol){
       d_diff, x_min, x_max, delta,
       n_dim, 0, d_states);
 
-    //calc fitness
-    //result =
+    s_sphera_kernel<<<1, 1>>>(d_new_solution, d_fitness, n_dim);
+    checkCudaErrors(cudaMemcpy(&result, d_fitness, sizeof(float), cudaMemcpyDeviceToHost));
+
     it++;
 
     if( result < current_fitness ){
-
+      printf("[+] %-3.2f < %-3.2f | [%-5u]\n", result, current_fitness, it);
       current_fitness = result;
 
       //increment bias and copy
@@ -82,11 +132,13 @@ float SolisWets::optimize(const unsigned int n_evals, float * d_sol){
         d_diff, x_min, x_max, delta,
         n_dim, 1, d_states);
 
-      //calc fitness
-      //result =
+      s_sphera_kernel<<<1, 1>>>(d_new_solution, d_fitness, n_dim);
+      checkCudaErrors(cudaMemcpy(&result, d_fitness, sizeof(float), cudaMemcpyDeviceToHost));
       it++;
 
       if( result <= current_fitness ){
+        printf("[-] %-3.2f < %-3.2f | [%-5u]\n", result, current_fitness, it);
+
         current_fitness = result;
 
         //decrement bias and copy
