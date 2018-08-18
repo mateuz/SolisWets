@@ -90,7 +90,7 @@ __global__ void s_sphera_kernel(
 }
 
 float SolisWets::optimize(const unsigned int n_evals, float * d_sol){
-  unsigned int _n_success = 0, _n_fails = 0;
+  unsigned int _n_success = 0, _n_fails = 0, counter = 0;
 
   float * d_fitness;
   checkCudaErrors(cudaMalloc((void **)&d_fitness, sizeof(float)));
@@ -98,7 +98,7 @@ float SolisWets::optimize(const unsigned int n_evals, float * d_sol){
   float result = 0.0, current_fitness = 0.0;
 
   //eval solution
-  s_sphera_kernel<<<1, 1>>>(d_sol, d_fitness, n_dim);
+  s_rosenbrock_kernel<<<1, 1>>>(d_sol, d_fitness, n_dim);
   checkCudaErrors(cudaMemcpy(&current_fitness, d_fitness, sizeof(float), cudaMemcpyDeviceToHost));
   printf("%.2lf\n", current_fitness);
 
@@ -108,7 +108,7 @@ float SolisWets::optimize(const unsigned int n_evals, float * d_sol){
       d_diff, x_min, x_max, delta,
       n_dim, 0, d_states);
 
-    s_sphera_kernel<<<1, 1>>>(d_new_solution, d_fitness, n_dim);
+    s_rosenbrock_kernel<<<1, 1>>>(d_new_solution, d_fitness, n_dim);
     checkCudaErrors(cudaMemcpy(&result, d_fitness, sizeof(float), cudaMemcpyDeviceToHost));
 
     it++;
@@ -123,7 +123,7 @@ float SolisWets::optimize(const unsigned int n_evals, float * d_sol){
 
       _n_success++;
       _n_fails = 0;
-
+      counter = 0;
     } else {
       if( it >= n_evals ) break;
 
@@ -132,7 +132,7 @@ float SolisWets::optimize(const unsigned int n_evals, float * d_sol){
         d_diff, x_min, x_max, delta,
         n_dim, 1, d_states);
 
-      s_sphera_kernel<<<1, 1>>>(d_new_solution, d_fitness, n_dim);
+      s_rosenbrock_kernel<<<1, 1>>>(d_new_solution, d_fitness, n_dim);
       checkCudaErrors(cudaMemcpy(&result, d_fitness, sizeof(float), cudaMemcpyDeviceToHost));
       it++;
 
@@ -147,9 +147,12 @@ float SolisWets::optimize(const unsigned int n_evals, float * d_sol){
 
         _n_success++;
         _n_fails = 0;
+        counter = 0;
       } else {
         _n_success = 0;
         _n_fails++;
+
+        counter++;
       }
     }
     if( _n_success > n_success ){
@@ -158,6 +161,12 @@ float SolisWets::optimize(const unsigned int n_evals, float * d_sol){
     } else if( _n_fails > n_fails ){
       delta /= 2;
       _n_fails = 0;
+    }
+
+    if( counter == 100 ){
+      counter = 0;
+      delta = 0.2 * (x_max - x_min);
+      checkCudaErrors(cudaMemset(d_bias, 0, n_dim * sizeof(float)));
     }
   }
   return current_fitness;
