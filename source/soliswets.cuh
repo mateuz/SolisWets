@@ -2,6 +2,12 @@
 #define _SOLISWETS_H
 
 #include "helper.cuh"
+#include "constants.cuh"
+#include "Benchmarks.cuh"
+#include "F1.cuh"
+#include "F2.cuh"
+#include "F3.cuh"
+#include "F4.cuh"
 
 class SolisWets
 {
@@ -9,6 +15,7 @@ public:
 	unsigned int n_success;
 	unsigned int n_fails;
 	unsigned int n_dim;
+	unsigned int f_id;
 
 	/* bounds */
 	float x_min;
@@ -35,7 +42,7 @@ public:
    *    - float: x_max (upper bound)
    *    - float: delta
    */
-	SolisWets(unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, float, float, float);
+	SolisWets(unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, float, float, float);
 	~SolisWets();
 
   float optimize(const unsigned int, float *);
@@ -66,10 +73,7 @@ __global__ void generate_new_solution(
 	float * d_new_solution,
 	float * d_bias,
 	float * d_diff,
-	float x_min,
-	float x_max,
 	float delta,
-	unsigned int n_dim,
 	unsigned short direction,
 	curandState * g_state
 );

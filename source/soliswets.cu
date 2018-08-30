@@ -8,6 +8,7 @@ SolisWets::SolisWets(
   unsigned int _n_dim,
   unsigned int _n_threads,
   unsigned int _n_blocks,
+  unsigned int _f_id,
   float _x_min,
   float _x_max,
   float _delta
@@ -17,6 +18,7 @@ SolisWets::SolisWets(
   n_dim     = _n_dim;
   n_threads = _n_threads;
   n_blocks  = _n_blocks;
+  f_id      = _f_id;
   x_min     = _x_min;
   x_max     = _x_max;
   delta     = _delta;
@@ -25,6 +27,13 @@ SolisWets::SolisWets(
   checkCudaErrors(cudaMalloc((void **)&d_bias, n_dim * sizeof(float)));
   checkCudaErrors(cudaMalloc((void **)&d_diff, n_dim * sizeof(float)));
   checkCudaErrors(cudaMalloc((void **)&d_states, n_dim * sizeof(curandStateXORWOW_t)));
+
+  Configuration conf;
+  conf.x_min = x_min;
+  conf.x_max = x_max;
+  conf.ps = 1;
+  conf.n_dim = n_dim;
+  checkCudaErrors(cudaMemcpyToSymbol(params, &conf, sizeof(Configuration)));
 
   std::random_device rd;
   unsigned int seed = rd();
@@ -90,6 +99,8 @@ __global__ void s_sphera_kernel(
 }
 
 float SolisWets::optimize(const unsigned int n_evals, float * d_sol){
+  Benchmarks * B = new F2(n_dim, 1);
+
   unsigned int _n_success = 0, _n_fails = 0, counter = 0;
 
   float * d_fitness;
@@ -98,8 +109,9 @@ float SolisWets::optimize(const unsigned int n_evals, float * d_sol){
   float result = 0.0, current_fitness = 0.0;
 
   //eval solution
-  s_rosenbrock_kernel<<<1, 1>>>(d_sol, d_fitness, n_dim);
-  checkCudaErrors(cudaGetLastError());
+  B->compute(d_sol, d_fitness);
+  //s_rosenbrock_kernel<<<1, 1>>>(d_sol, d_fitness, n_dim);
+  //checkCudaErrors(cudaGetLastError());
 
   checkCudaErrors(cudaMemcpy(&current_fitness, d_fitness, sizeof(float), cudaMemcpyDeviceToHost));
   printf("%.2lf\n", current_fitness);
@@ -107,13 +119,11 @@ float SolisWets::optimize(const unsigned int n_evals, float * d_sol){
   for( unsigned int it = 1; it <= n_evals; ){
     generate_new_solution<<<n_blocks, n_threads>>>(
       d_sol, d_new_solution, d_bias,
-      d_diff, x_min, x_max, delta,
-      n_dim, 0, d_states);
+      d_diff, delta, 0, d_states);
 
     checkCudaErrors(cudaGetLastError());
 
-    s_rosenbrock_kernel<<<1, 1>>>(d_new_solution, d_fitness, n_dim);
-    checkCudaErrors(cudaGetLastError());
+    B->compute(d_new_solution, d_fitness);
 
     checkCudaErrors(cudaMemcpy(&result, d_fitness, sizeof(float), cudaMemcpyDeviceToHost));
 
@@ -137,13 +147,11 @@ float SolisWets::optimize(const unsigned int n_evals, float * d_sol){
 
       generate_new_solution<<<n_blocks, n_threads>>>(
         d_sol, d_new_solution, d_bias,
-        d_diff, x_min, x_max, delta,
-        n_dim, 1, d_states);
+        d_diff, delta, 1, d_states);
 
       checkCudaErrors(cudaGetLastError());
 
-      s_rosenbrock_kernel<<<1, 1>>>(d_new_solution, d_fitness, n_dim);
-      checkCudaErrors(cudaGetLastError());
+      B->compute(d_new_solution, d_fitness);
 
       checkCudaErrors(cudaMemcpy(&result, d_fitness, sizeof(float), cudaMemcpyDeviceToHost));
       it++;
@@ -156,7 +164,7 @@ float SolisWets::optimize(const unsigned int n_evals, float * d_sol){
         //decrement bias and copy
         decrement_bias<<<n_blocks, n_threads>>>(d_bias, d_diff, n_dim);
         checkCudaErrors(cudaGetLastError());
-        
+
         checkCudaErrors(cudaMemcpy(d_sol, d_new_solution, n_dim * sizeof(float), cudaMemcpyDeviceToDevice));
 
         _n_success++;
@@ -228,10 +236,7 @@ __global__ void generate_new_solution(
   float * d_new_solution,
   float * d_bias,
   float * d_diff,
-  float x_min,
-  float x_max,
   float delta,
-  unsigned int n_dim,
   unsigned short direction,
   curandState * g_state
 ){
@@ -239,7 +244,7 @@ __global__ void generate_new_solution(
 
   float solution;
 
-  if( index < n_dim )
+  if( index < params.n_dim )
   {
     if( direction == 0 )
     {
@@ -253,8 +258,8 @@ __global__ void generate_new_solution(
     }
 
     // Check bounds of the new solution
-    solution = max(x_min, solution);
-    solution = min(x_max, solution);
+    solution = max(params.x_min, solution);
+    solution = min(params.x_max, solution);
     d_new_solution[index] = solution;
   }
 }
